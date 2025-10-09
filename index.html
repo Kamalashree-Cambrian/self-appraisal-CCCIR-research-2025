@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty Self Appraisal Form</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-6 text-center">Faculty Self Appraisal Form</h1>
+
+    <form id="appraisalForm" class="space-y-6">
+
+      <!-- Quantitative Section -->
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Quantitative Details</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <label>Number of courses conducted <input type="number" name="courses" class="input"></label>
+          <label>Number of hours taught <input type="number" name="hours_taught" class="input"></label>
+          <label>Number of papers published <input type="number" name="papers" class="input"></label>
+          <label>Number of patents granted <input type="number" name="patents" class="input"></label>
+          <label>Number of core training programs <input type="number" name="core_trainings" class="input"></label>
+          <label>Hours taught in core training <input type="number" name="core_hours" class="input"></label>
+        </div>
+      </div>
+
+      <!-- Significant Achievements -->
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Significant Achievements</h2>
+        <textarea name="achievements" rows="6" placeholder="List products developed, chip designs, courses developed, patents, awards, labs setup, etc." class="input w-full"></textarea>
+      </div>
+
+      <!-- Research Section -->
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Research</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <label>Proposals submitted <input type="number" name="research_submitted" class="input"></label>
+          <label>Proposals awarded <input type="number" name="research_awarded" class="input"></label>
+          <label>Ongoing proposals <input type="number" name="research_ongoing" class="input"></label>
+          <label>Proposals in preparation <input type="number" name="research_preparation" class="input"></label>
+        </div>
+      </div>
+
+      <!-- Teaching Table -->
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Teaching Summary</h2>
+        <table class="w-full border border-gray-300 text-center">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border px-2">Level</th>
+              <th class="border px-2">Number of Subjects</th>
+              <th class="border px-2">Number of Hours</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="border px-2">UG</td>
+              <td class="border px-2"><input type="number" name="ug_subjects" class="input w-full"></td>
+              <td class="border px-2"><input type="number" name="ug_hours" class="input w-full"></td>
+            </tr>
+            <tr>
+              <td class="border px-2">PG</td>
+              <td class="border px-2"><input type="number" name="pg_subjects" class="input w-full"></td>
+              <td class="border px-2"><input type="number" name="pg_hours" class="input w-full"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Submit</button>
+    </form>
+
+    <p id="responseMsg" class="mt-4 text-green-600 hidden">Your response has been recorded!</p>
+  </div>
+
+  <script>
+    const form = document.getElementById('appraisalForm');
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      document.getElementById('responseMsg').classList.remove('hidden');
+      form.reset();
+    });
+  </script>
+
+  <style>
+    .input {
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      padding: 0.4rem;
+      width: 100%;
+    }
+  </style>
+</body>
+</html>
