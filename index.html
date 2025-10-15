@@ -1,104 +1,61 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Faculty Self Appraisal Form</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Employee Self-Appraisal</title>
+<style>
+body { font-family: 'Poppins', sans-serif; background: #f8f9fc; margin: 0; }
+.container { max-width: 900px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+h1 { text-align: center; color: #333; }
+section { margin-bottom: 2rem; }
+label { font-weight: 600; display: block; margin: 0.5rem 0; }
+input, textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
+button { background-color: #007BFF; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+button:hover { background-color: #0056b3; }
+</style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body>
+<div class="container">
+<h1>Employee Self-Appraisal</h1>
+<form id="appraisalForm">
+<section>
+<h2>Contribution</h2>
+<label>Number of Courses Conducted:</label>
+<input type="number" name="courses_conducted" />
 
-  <div class="min-h-screen flex items-center justify-center p-6">
-    <div class="bg-white shadow-2xl rounded-3xl p-10 max-w-4xl w-full">
 
-      <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Faculty Self Appraisal Form</h1>
+<label>Number of Hours Taught:</label>
+<input type="number" name="hours_taught" />
 
-      <form id="appraisalForm" method="POST" action="YOUR_WEB_APP_URL_HERE" class="space-y-8">
 
-        <!-- Quantitative Section -->
-        <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
-          <h2 class="text-xl font-semibold mb-4 text-gray-700">Quantitative Details</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="number" name="courses" placeholder="Number of courses conducted" class="input-field">
-            <input type="number" name="hours_taught" placeholder="Number of hours taught" class="input-field">
-            <input type="number" name="papers" placeholder="Number of papers published" class="input-field">
-            <input type="number" name="patents" placeholder="Number of patents granted" class="input-field">
-            <input type="number" name="core_trainings" placeholder="Number of core training programs" class="input-field">
-            <input type="number" name="core_hours" placeholder="Hours taught in core training" class="input-field">
-          </div>
-        </div>
+<label>Number of Papers Published:</label>
+<input type="number" name="papers_published" />
 
-        <!-- Significant Achievements -->
-        <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
-          <h2 class="text-xl font-semibold mb-4 text-gray-700">Significant Achievements</h2>
-          <textarea name="achievements" rows="6" placeholder="Products developed, chip design, courses developed, patents, awards, labs setup, etc." class="input-field w-full resize-none"></textarea>
-        </div>
 
-        <!-- Research Section -->
-        <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
-          <h2 class="text-xl font-semibold mb-4 text-gray-700">Research</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="number" name="research_submitted" placeholder="Proposals submitted" class="input-field">
-            <input type="number" name="research_awarded" placeholder="Proposals awarded" class="input-field">
-            <input type="number" name="research_ongoing" placeholder="Ongoing proposals" class="input-field">
-            <input type="number" name="research_preparation" placeholder="Proposals in preparation" class="input-field">
-          </div>
-        </div>
+<label>Number of Patents Granted:</label>
+<input type="number" name="patents_granted" />
+</section>
 
-        <!-- Teaching Summary -->
-        <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
-          <h2 class="text-xl font-semibold mb-4 text-gray-700">Teaching Summary</h2>
-          <table class="table-auto w-full text-center border border-gray-300">
-            <thead class="bg-gray-100">
-              <tr>
-                <th class="border px-3 py-2">Level</th>
-                <th class="border px-3 py-2">Number of Subjects</th>
-                <th class="border px-3 py-2">Number of Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="border px-3 py-2">UG</td>
-                <td class="border px-3 py-2"><input type="number" name="ug_subjects" class="input-field w-full"></td>
-                <td class="border px-3 py-2"><input type="number" name="ug_hours" class="input-field w-full"></td>
-              </tr>
-              <tr>
-                <td class="border px-3 py-2">PG</td>
-                <td class="border px-3 py-2"><input type="number" name="pg_subjects" class="input-field w-full"></td>
-                <td class="border px-3 py-2"><input type="number" name="pg_hours" class="input-field w-full"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
 
-        <button type="submit" class="w-full bg-blue-600 text-white text-lg py-3 rounded-xl hover:bg-blue-700 transition-all duration-300">Submit</button>
+<section>
+<h2>Significant Achievements</h2>
+<label>Products Developed:</label>
+<textarea name="products_developed"></textarea>
 
-        <p id="responseMsg" class="mt-4 text-green-600 font-medium text-center hidden">Your response has been recorded!</p>
 
-      </form>
-    </div>
-  </div>
+<label>Support for Companies on Campus:</label>
+<textarea name="support_for_companies"></textarea>
 
-  <script>
-    const form = document.getElementById('appraisalForm');
-    form.addEventListener('submit', e => {
-      document.getElementById('responseMsg').classList.remove('hidden');
-    });
-  </script>
 
-  <style>
-    .input-field {
-      border: 1px solid #d1d5db;
-      border-radius: 0.75rem;
-      padding: 0.6rem 0.8rem;
-      outline: none;
-      transition: all 0.2s;
-    }
-    .input-field:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
-    }
-  </style>
+<label>Courses Developed:</label>
+<textarea name="courses_developed"></textarea>
 
-</body>
-</html>
+
+<label>Patents Awarded:</label>
+<textarea name="patents_awarded"></textarea>
+</section>
+
+
+```
