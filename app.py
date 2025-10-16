@@ -13,7 +13,6 @@ except Exception:
     GS_AVAILABLE = False
 
 # --- Helper functions ---
-
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
     filename = Path(folder) / f"submission_{submission['id']}.json"
@@ -89,6 +88,20 @@ with col2:
 
 st.write('---')
 
+# --- Dynamic add buttons (OUTSIDE form) ---
+if 'courses' not in st.session_state:
+    st.session_state['courses'] = [{'title': '', 'hours': '', 'points_per_course': 2}]
+if 'awards' not in st.session_state:
+    st.session_state['awards'] = [{'title': '', 'year': ''}]
+
+with st.expander("➕ Add More Sections"):
+    if st.button("➕ Add Course"):
+        st.session_state['courses'].append({'title': '', 'hours': '', 'points_per_course': 2})
+        st.experimental_rerun()
+    if st.button("➕ Add Award/Certificate"):
+        st.session_state['awards'].append({'title': '', 'year': ''})
+        st.experimental_rerun()
+
 # --- Form ---
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
@@ -97,15 +110,10 @@ with st.form('appraisal_form'):
     role = st.text_input('💼 Role / Designation')
 
     st.markdown('<div class="section-title">📘 Contributions</div>', unsafe_allow_html=True)
-    if 'courses' not in st.session_state:
-        st.session_state['courses'] = [{ 'title':'', 'hours':'', 'points_per_course':2 }]
     for i, c in enumerate(st.session_state['courses']):
-        cols = st.columns([4,2,1])
+        cols = st.columns([4, 2])
         st.session_state['courses'][i]['title'] = cols[0].text_input(f'Course title #{i+1}', value=c['title'], key=f'course_title_{i}')
         st.session_state['courses'][i]['hours'] = cols[1].number_input(f'Hours #{i+1}', min_value=0, step=1, value=int(c['hours']) if str(c['hours']).isdigit() else 0, key=f'course_hours_{i}')
-        if cols[2].button('➕', key=f'add_course_{i}'):
-            st.session_state['courses'].append({ 'title':'', 'hours':'', 'points_per_course':2 })
-            st.experimental_rerun()
 
     papers = st.number_input('📰 Papers published', min_value=0, step=1)
     paper_titles = st.text_area('Paper titles (comma separated)')
@@ -119,16 +127,11 @@ with st.form('appraisal_form'):
     projects = st.number_input('💡 Consultancy / Projects completed', min_value=0, step=1)
     proj_details = st.text_area('Project details (one per line)')
 
-    if 'awards' not in st.session_state:
-        st.session_state['awards'] = [{ 'title':'', 'year':'' }]
     st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
     for i, a in enumerate(st.session_state['awards']):
-        cols = st.columns([3,2,1])
+        cols = st.columns([3, 2])
         st.session_state['awards'][i]['title'] = cols[0].text_input(f'Award #{i+1}', value=a['title'], key=f'award_title_{i}')
         st.session_state['awards'][i]['year'] = cols[1].text_input(f'Year #{i+1}', value=a['year'], key=f'award_year_{i}')
-        if cols[2].button('➕', key=f'add_award_{i}'):
-            st.session_state['awards'].append({ 'title':'', 'year':'' })
-            st.experimental_rerun()
 
     teaching = st.text_area('📚 Teaching summary (courses, topics, target audience)')
     research = st.text_area('🔬 Research summary (proposals, grants, etc.)')
@@ -175,8 +178,7 @@ if submitted:
 
 st.write('---')
 st.markdown('**requirements.txt**')
-st.code('''
-streamlit
+st.code('''streamlit
 gspread
 google-auth
 pandas
