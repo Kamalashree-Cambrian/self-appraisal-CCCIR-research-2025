@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 import pandas as pd
 import json
@@ -12,7 +13,6 @@ try:
 except Exception:
     GS_AVAILABLE = False
 
-
 # --- Helper functions ---
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
@@ -20,7 +20,6 @@ def local_save(submission: dict, folder='submissions'):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(submission, f, ensure_ascii=False, indent=2, default=str)
     return str(filename)
-
 
 def flatten_submission(sub: dict) -> dict:
     flat = {}
@@ -35,7 +34,6 @@ def flatten_submission(sub: dict) -> dict:
     flat['self_rating_overall'] = sub.get('self_rating_overall')
     flat['comments'] = sub.get('comments')
     return flat
-
 
 def append_to_gsheet(submission: dict):
     if not GS_AVAILABLE:
@@ -69,7 +67,6 @@ def append_to_gsheet(submission: dict):
     ws.append_row([json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v) for v in flat.values()])
     return True
 
-
 # --- Page setup ---
 st.set_page_config(page_title='Self Appraisal — SmartForm+', layout='wide', page_icon='📝')
 
@@ -79,6 +76,7 @@ st.markdown("""
 .brand{font-size:30px;font-weight:700;color:#124265}
 .subtitle{color:#475569;font-size:15px;margin-top:-8px}
 .section-title{font-weight:600;font-size:18px;margin-top:12px}
+.small-muted{color:#6b7280;font-size:13px}
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,18 +96,6 @@ if 'course_count' not in st.session_state:
 if 'award_count' not in st.session_state:
     st.session_state.award_count = 3
 
-# --- Dynamic add buttons (outside the form) ---
-st.subheader("➕ Add More Sections")
-c1, c2 = st.columns(2)
-with c1:
-    if st.button("➕ Add another course"):
-        st.session_state.course_count += 1
-        st.experimental_rerun()
-with c2:
-    if st.button("🏅 Add another award"):
-        st.session_state.award_count += 1
-        st.experimental_rerun()
-
 # --- Main Form ---
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
@@ -117,7 +103,9 @@ with st.form('appraisal_form'):
     dept = st.text_input('🏢 Department')
     role = st.text_input('💼 Role / Designation')
 
+    # Courses section header + place for Add button (button must be outside form)
     st.markdown('<div class="section-title">📘 Courses / Training</div>', unsafe_allow_html=True)
+    st.caption("Add course titles and hours. To add more than the shown fields, use the 'Add another course' button below the section (outside the form).", unsafe_allow_html=True)
     courses = []
     for i in range(st.session_state.course_count):
         cols = st.columns([4, 2])
@@ -137,6 +125,7 @@ with st.form('appraisal_form'):
     proj_details = st.text_area('Project details (one per line)')
 
     st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
+    st.caption("Enter awards or certificates. Use 'Add another award' below the section to show more fields.", unsafe_allow_html=True)
     awards = []
     for i in range(st.session_state.award_count):
         cols = st.columns([3, 2])
@@ -152,6 +141,26 @@ with st.form('appraisal_form'):
 
     submitted = st.form_submit_button('🚀 Submit appraisal')
 
+# --- Add-buttons placed under their sections but kept OUTSIDE the form ---
+# We reproduce the visual placement by placing the buttons right after the form,
+# each labeled so users understand which section they affect.
+
+st.markdown(" ")  # spacer
+cols = st.columns(2)
+with cols[0]:
+    st.markdown("**Courses / Training — add more**")
+    if st.button("➕ Add another course"):
+        st.session_state.course_count += 1
+        # No st.experimental_rerun() — Streamlit will rerun automatically on button click.
+with cols[1]:
+    st.markdown("**Awards & Certificates — add more**")
+    if st.button("🏅 Add another award"):
+        st.session_state.award_count += 1
+        # No st.experimental_rerun()
+
+st.write('---')
+
+# --- Submission handling (runs when form_submit_button was pressed) ---
 if submitted:
     submission = {
         'id': str(uuid.uuid4())[:8],
