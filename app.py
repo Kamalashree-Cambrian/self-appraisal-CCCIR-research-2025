@@ -13,7 +13,7 @@ try:
 except Exception:
     GS_AVAILABLE = False
 
-# --- Helper functions ---
+# -------------------- Helper functions --------------------
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
     filename = Path(folder) / f"submission_{submission['id']}.json"
@@ -29,10 +29,9 @@ def flatten_submission(sub: dict) -> dict:
     flat['employee_email'] = sub.get('employee_email')
     flat['department'] = sub.get('department')
     flat['role'] = sub.get('role')
-    for k in ['contributions', 'achievements', 'teaching', 'research', 'others']:
-        flat[k] = sub.get(k, {})
     flat['self_rating_overall'] = sub.get('self_rating_overall')
     flat['comments'] = sub.get('comments')
+    flat['contributions'] = json.dumps(sub.get('contributions', {}), ensure_ascii=False)
     return flat
 
 def append_to_gsheet(submission: dict):
@@ -62,50 +61,61 @@ def append_to_gsheet(submission: dict):
         ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=30)
 
     flat = flatten_submission(submission)
-    if ws.row_count == 0 or ws.get_all_values() == []:
+    if not ws.get_all_values():
         ws.append_row(list(flat.keys()))
-    ws.append_row([json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v) for v in flat.values()])
+    ws.append_row(list(flat.values()))
     return True
 
-# --- Page setup ---
+
+# -------------------- UI Setup --------------------
 st.set_page_config(page_title='Self Appraisal — SmartForm+', layout='wide', page_icon='📝')
 
 st.markdown("""
 <style>
-.card {background:linear-gradient(90deg,#ffffffcc,#f1f7ff);padding:18px;border-radius:16px;box-shadow:0 6px 18px rgba(22,61,105,0.1);}
 .brand{font-size:30px;font-weight:700;color:#124265}
 .subtitle{color:#475569;font-size:15px;margin-top:-8px}
-.section-title{font-weight:600;font-size:18px;margin-top:12px}
-.small-muted{color:#6b7280;font-size:13px}
+.section-title{font-weight:600;font-size:18px;margin-top:20px}
 </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
 col1, col2 = st.columns([2, 3])
 with col1:
     st.image("https://cdn-icons-png.flaticon.com/512/942/942748.png", width=120)
 with col2:
     st.markdown('<div class="brand">Smart Self-Appraisal+</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Enhanced UI & auto-organized by department</div>', unsafe_allow_html=True)
-
+    st.markdown('<div class="subtitle">Enhanced UI • Auto-organized by department</div>', unsafe_allow_html=True)
 st.write('---')
 
-# --- Session state management for dynamic inputs ---
+
+# -------------------- Session state --------------------
 if 'course_count' not in st.session_state:
     st.session_state.course_count = 3
 if 'award_count' not in st.session_state:
     st.session_state.award_count = 3
 
-# --- Main Form ---
+# -------------------- Dynamic control buttons ABOVE the form --------------------
+st.subheader("🧩 Add More Sections Before Filling")
+
+cc1, cc2 = st.columns(2)
+with cc1:
+    if st.button("➕ Add another course field"):
+        st.session_state.course_count += 1
+with cc2:
+    if st.button("🏅 Add another award field"):
+        st.session_state.award_count += 1
+
+st.caption("You can click the buttons above to show more input fields before submitting your form.")
+st.write('---')
+
+
+# -------------------- Appraisal Form --------------------
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
     email = st.text_input('📧 Work Email')
     dept = st.text_input('🏢 Department')
     role = st.text_input('💼 Role / Designation')
 
-    # Courses section header + place for Add button (button must be outside form)
     st.markdown('<div class="section-title">📘 Courses / Training</div>', unsafe_allow_html=True)
-    st.caption("Add course titles and hours. To add more than the shown fields, use the 'Add another course' button below the section (outside the form).", unsafe_allow_html=True)
     courses = []
     for i in range(st.session_state.course_count):
         cols = st.columns([4, 2])
@@ -113,6 +123,15 @@ with st.form('appraisal_form'):
         hours = cols[1].number_input(f'Hours #{i+1}', min_value=0, step=1, key=f'course_hours_{i}')
         if title:
             courses.append({'title': title, 'hours': hours, 'points_per_course': 2})
+
+    st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
+    awards = []
+    for i in range(st.session_state.award_count):
+        cols = st.columns([3, 2])
+        title = cols[0].text_input(f'Award #{i+1}', key=f'award_title_{i}')
+        year = cols[1].text_input(f'Year #{i+1}', key=f'award_year_{i}')
+        if title:
+            awards.append({'title': title, 'year': year})
 
     st.markdown('<div class="section-title">📚 Research & Teaching</div>', unsafe_allow_html=True)
     papers = st.number_input('📰 Papers published', min_value=0, step=1)
@@ -124,43 +143,14 @@ with st.form('appraisal_form'):
     projects = st.number_input('💡 Consultancy / Projects completed', min_value=0, step=1)
     proj_details = st.text_area('Project details (one per line)')
 
-    st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
-    st.caption("Enter awards or certificates. Use 'Add another award' below the section to show more fields.", unsafe_allow_html=True)
-    awards = []
-    for i in range(st.session_state.award_count):
-        cols = st.columns([3, 2])
-        title = cols[0].text_input(f'Award #{i+1}', key=f'award_title_{i}')
-        year = cols[1].text_input(f'Year #{i+1}', key=f'award_year_{i}')
-        if title:
-            awards.append({'title': title, 'year': year})
-
-    teaching = st.text_area('📚 Teaching summary (courses, topics, target audience)')
-    research = st.text_area('🔬 Research summary (proposals, grants, etc.)')
+    teaching = st.text_area('📘 Teaching summary')
+    research = st.text_area('🔬 Research summary')
     rating = st.slider('⭐ Overall self-rating', 1, 5, 4)
-    comments = st.text_area('💬 Comments (achievements, goals for next period)')
+    comments = st.text_area('💬 Additional Comments')
 
-    submitted = st.form_submit_button('🚀 Submit appraisal')
+    submitted = st.form_submit_button('🚀 Submit Appraisal')
 
-# --- Add-buttons placed under their sections but kept OUTSIDE the form ---
-# We reproduce the visual placement by placing the buttons right after the form,
-# each labeled so users understand which section they affect.
-
-st.markdown(" ")  # spacer
-cols = st.columns(2)
-with cols[0]:
-    st.markdown("**Courses / Training — add more**")
-    if st.button("➕ Add another course"):
-        st.session_state.course_count += 1
-        # No st.experimental_rerun() — Streamlit will rerun automatically on button click.
-with cols[1]:
-    st.markdown("**Awards & Certificates — add more**")
-    if st.button("🏅 Add another award"):
-        st.session_state.award_count += 1
-        # No st.experimental_rerun()
-
-st.write('---')
-
-# --- Submission handling (runs when form_submit_button was pressed) ---
+# -------------------- Submission Handling --------------------
 if submitted:
     submission = {
         'id': str(uuid.uuid4())[:8],
@@ -195,8 +185,9 @@ if submitted:
 
     st.balloons()
     st.json(submission)
-    st.download_button('📥 Download submission (JSON)', data=json.dumps(submission, indent=2),
-                       file_name=f'appraisal_{submission['id']}.json')
+    st.download_button('📥 Download submission (JSON)',
+                       data=json.dumps(submission, indent=2),
+                       file_name=f'appraisal_{submission["id"]}.json')
 
 st.write('---')
 st.markdown('**requirements.txt**')
