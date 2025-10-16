@@ -4,8 +4,6 @@ import json
 import datetime
 import uuid
 from pathlib import Path
-from streamlit_lottie import st_lottie
-import requests
 
 try:
     import gspread
@@ -15,14 +13,6 @@ except Exception:
     GS_AVAILABLE = False
 
 # --- Helper functions ---
-
-def load_lottie_url(url: str):
-    try:
-        r = requests.get(url)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        return None
 
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
@@ -95,9 +85,7 @@ with col1:
     st.image('/mnt/data/WhatsApp Image 2025-10-15 at 3.23.45 PM.jpeg', width=200)
 with col2:
     st.markdown('<div class="brand">Smart Self-Appraisal+</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Enhanced, animated & auto-organized by department</div>', unsafe_allow_html=True)
-
-st_lottie(load_lottie_url("https://assets10.lottiefiles.com/packages/lf20_jcikwtux.json"), height=150, key="intro_anim")
+    st.markdown('<div class="subtitle">Enhanced UI & auto-organized by department</div>', unsafe_allow_html=True)
 
 st.write('---')
 
@@ -189,7 +177,6 @@ st.write('---')
 st.markdown('**requirements.txt**')
 st.code('''
 streamlit
-streamlit-lottie
 gspread
 google-auth
 pandas
