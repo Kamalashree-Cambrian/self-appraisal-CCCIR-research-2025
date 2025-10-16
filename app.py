@@ -82,7 +82,7 @@ st.markdown("""
 # --- Header ---
 col1, col2 = st.columns([2,3])
 with col1:
-    st.image('/mnt/data/WhatsApp Image 2025-10-15 at 3.23.45 PM.jpeg', width=200)
+    st.image("https://cdn-icons-png.flaticon.com/512/942/942748.png", width=120)
 with col2:
     st.markdown('<div class="brand">Smart Self-Appraisal+</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Enhanced UI & auto-organized by department</div>', unsafe_allow_html=True)
