@@ -12,6 +12,7 @@ try:
 except Exception:
     GS_AVAILABLE = False
 
+
 # --- Helper functions ---
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
@@ -19,6 +20,7 @@ def local_save(submission: dict, folder='submissions'):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(submission, f, ensure_ascii=False, indent=2, default=str)
     return str(filename)
+
 
 def flatten_submission(sub: dict) -> dict:
     flat = {}
@@ -33,6 +35,7 @@ def flatten_submission(sub: dict) -> dict:
     flat['self_rating_overall'] = sub.get('self_rating_overall')
     flat['comments'] = sub.get('comments')
     return flat
+
 
 def append_to_gsheet(submission: dict):
     if not GS_AVAILABLE:
@@ -66,6 +69,7 @@ def append_to_gsheet(submission: dict):
     ws.append_row([json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v) for v in flat.values()])
     return True
 
+
 # --- Page setup ---
 st.set_page_config(page_title='Self Appraisal — SmartForm+', layout='wide', page_icon='📝')
 
@@ -79,7 +83,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Header ---
-col1, col2 = st.columns([2,3])
+col1, col2 = st.columns([2, 3])
 with col1:
     st.image("https://cdn-icons-png.flaticon.com/512/942/942748.png", width=120)
 with col2:
@@ -88,21 +92,7 @@ with col2:
 
 st.write('---')
 
-# --- Dynamic add buttons (OUTSIDE form) ---
-if 'courses' not in st.session_state:
-    st.session_state['courses'] = [{'title': '', 'hours': '', 'points_per_course': 2}]
-if 'awards' not in st.session_state:
-    st.session_state['awards'] = [{'title': '', 'year': ''}]
-
-with st.expander("➕ Add More Sections"):
-    if st.button("➕ Add Course"):
-        st.session_state['courses'].append({'title': '', 'hours': '', 'points_per_course': 2})
-        st.experimental_rerun()
-    if st.button("➕ Add Award/Certificate"):
-        st.session_state['awards'].append({'title': '', 'year': ''})
-        st.experimental_rerun()
-
-# --- Form ---
+# --- Fixed form (simplified dynamic fields) ---
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
     email = st.text_input('📧 Work Email')
@@ -110,10 +100,14 @@ with st.form('appraisal_form'):
     role = st.text_input('💼 Role / Designation')
 
     st.markdown('<div class="section-title">📘 Contributions</div>', unsafe_allow_html=True)
-    for i, c in enumerate(st.session_state['courses']):
+    st.caption("Enter up to 3 courses (leave blank if not applicable)")
+    courses = []
+    for i in range(1, 4):
         cols = st.columns([4, 2])
-        st.session_state['courses'][i]['title'] = cols[0].text_input(f'Course title #{i+1}', value=c['title'], key=f'course_title_{i}')
-        st.session_state['courses'][i]['hours'] = cols[1].number_input(f'Hours #{i+1}', min_value=0, step=1, value=int(c['hours']) if str(c['hours']).isdigit() else 0, key=f'course_hours_{i}')
+        title = cols[0].text_input(f'Course title #{i}', key=f'course_title_{i}')
+        hours = cols[1].number_input(f'Hours #{i}', min_value=0, step=1, key=f'course_hours_{i}')
+        if title:
+            courses.append({'title': title, 'hours': hours, 'points_per_course': 2})
 
     papers = st.number_input('📰 Papers published', min_value=0, step=1)
     paper_titles = st.text_area('Paper titles (comma separated)')
@@ -128,10 +122,14 @@ with st.form('appraisal_form'):
     proj_details = st.text_area('Project details (one per line)')
 
     st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
-    for i, a in enumerate(st.session_state['awards']):
+    st.caption("Enter up to 3 awards or certificates")
+    awards = []
+    for i in range(1, 4):
         cols = st.columns([3, 2])
-        st.session_state['awards'][i]['title'] = cols[0].text_input(f'Award #{i+1}', value=a['title'], key=f'award_title_{i}')
-        st.session_state['awards'][i]['year'] = cols[1].text_input(f'Year #{i+1}', value=a['year'], key=f'award_year_{i}')
+        title = cols[0].text_input(f'Award #{i}', key=f'award_title_{i}')
+        year = cols[1].text_input(f'Year #{i}', key=f'award_year_{i}')
+        if title:
+            awards.append({'title': title, 'year': year})
 
     teaching = st.text_area('📚 Teaching summary (courses, topics, target audience)')
     research = st.text_area('🔬 Research summary (proposals, grants, etc.)')
@@ -149,12 +147,12 @@ if submitted:
         'department': dept,
         'role': role,
         'contributions': {
-            'courses': st.session_state.get('courses', []),
+            'courses': courses,
             'papers': {'count': papers, 'titles': [p.strip() for p in paper_titles.split(',') if p.strip()]},
             'patents': {'count': patents, 'details': patent_details},
             'corporate_trainings': {'count': corp_trainings, 'details': corp_details},
             'projects': {'count': projects, 'details': [p.strip() for p in proj_details.split('\n') if p.strip()]},
-            'awards': st.session_state.get('awards', [])
+            'awards': awards
         },
         'teaching': teaching,
         'research': research,
@@ -174,7 +172,8 @@ if submitted:
 
     st.balloons()
     st.json(submission)
-    st.download_button('📥 Download submission (JSON)', data=json.dumps(submission, indent=2), file_name=f'appraisal_{submission["id"]}.json')
+    st.download_button('📥 Download submission (JSON)', data=json.dumps(submission, indent=2),
+                       file_name=f'appraisal_{submission['id']}.json')
 
 st.write('---')
 st.markdown('**requirements.txt**')
