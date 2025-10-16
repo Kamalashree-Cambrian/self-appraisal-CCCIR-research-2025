@@ -1,282 +1,105 @@
-import streamlit as st
-import pandas as pd
-import json
-import datetime
-import uuid
-from pathlib import Path
+# ===== Streamlit App Header =====
+st.set_page_config(page_title="Employee Self Appraisal 2025", page_icon="📝", layout="wide")
 
-try:
-    import gspread
-    from google.oauth2.service_account import Credentials
-    GS_AVAILABLE = True
-except Exception:
-    GS_AVAILABLE = False
-
-# Optional Drive upload libs will be imported inside function when needed.
-
-# --- Helper functions ---
-
-def local_save(submission: dict, folder='submissions'):
-    Path(folder).mkdir(parents=True, exist_ok=True)
-    filename = Path(folder) / f"submission_{submission['id']}.json"
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(submission, f, ensure_ascii=False, indent=2, default=str)
-    return str(filename)
-
-
-def upload_json_to_drive(local_path: str, filename: str, folder_id: str, service_account_info: dict):
-    """Upload a local file to Google Drive folder_id using service account credentials.
-    This function imports googleapiclient lazily and returns the created file id on success.
-    If the libraries are missing, it raises an informative exception."""
-    try:
-        from googleapiclient.discovery import build
-        from googleapiclient.http import MediaFileUpload
-        from google.oauth2.service_account import Credentials as GACreds
-    except Exception as e:
-        raise RuntimeError('google-api-python-client not installed; add it to requirements.txt') from e
-
-    scopes = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
-    creds = GACreds.from_service_account_info(service_account_info, scopes=scopes)
-    drive_service = build('drive', 'v3', credentials=creds)
-
-    file_metadata = {'name': filename}
-    if folder_id:
-        file_metadata['parents'] = [folder_id]
-
-    media = MediaFileUpload(local_path, mimetype='application/json')
-    created = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    return created.get('id')
-
-
-def flatten_submission(sub: dict) -> dict:
-    flat = {}
-    flat['id'] = sub.get('id')
-    flat['timestamp'] = sub.get('timestamp')
-    flat['employee_name'] = sub.get('employee_name')
-    flat['employee_email'] = sub.get('employee_email')
-    flat['department'] = sub.get('department')
-    flat['role'] = sub.get('role')
-    flat['self_rating_overall'] = sub.get('self_rating_overall')
-    flat['comments'] = sub.get('comments')
-    # store contributions as JSON string for easy sheet storage
-    flat['contributions'] = json.dumps(sub.get('contributions', {}), ensure_ascii=False)
-    return flat
-
-
-def append_to_gsheet(submission: dict):
-    if not GS_AVAILABLE:
-        raise RuntimeError("gspread/google-auth not installed")
-
-    service_account_info = st.secrets.get('gcp_service_account')
-    sheet_id = st.secrets.get('GOOGLE_SHEET_ID')
-
-    if not service_account_info or not sheet_id:
-        raise RuntimeError('Missing Google Sheets credentials in st.secrets')
-
-    creds = Credentials.from_service_account_info(service_account_info, scopes=[
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
-    ])
-    client = gspread.authorize(creds)
-    sh = client.open_by_key(sheet_id)
-
-    year = datetime.datetime.now().year
-    dept = submission.get('department', 'General').strip().title() or 'General'
-    worksheet_name = f"{year}_{dept}"
-
-    try:
-        ws = sh.worksheet(worksheet_name)
-    except Exception:
-        ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=30)
-
-    flat = flatten_submission(submission)
-    # ensure header
-    if not ws.get_all_values():
-        ws.append_row(list(flat.keys()))
-    ws.append_row(list(flat.values()))
-    return True
-
-
-# --- Combine local JSON submissions into a single dataframe ---
-def load_all_submissions(folder='submissions'):
-    p = Path(folder)
-    if not p.exists():
-        return pd.DataFrame()
-    files = sorted(p.glob('submission_*.json'))
-    if not files:
-        return pd.DataFrame()
-    records = []
-    for f in files:
-        try:
-            with open(f, 'r', encoding='utf-8') as fh:
-                data = json.load(fh)
-                flat = flatten_submission(data)
-                records.append(flat)
-        except Exception:
-            continue
-    if not records:
-        return pd.DataFrame()
-    df = pd.DataFrame(records)
-    # convert timestamp to datetime
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-    return df
-
-
-# --- Page setup ---
-st.set_page_config(page_title='Self Appraisal — SmartForm+', layout='wide', page_icon='📝')
-
+# --- Custom CSS inspired by both design images ---
 st.markdown("""
-<style>
-.card {background:linear-gradient(90deg,#ffffffcc,#f1f7ff);padding:18px;border-radius:16px;box-shadow:0 6px 18px rgba(22,61,105,0.1);}
-.brand{font-size:30px;font-weight:700;color:#124265}
-.subtitle{color:#475569;font-size:15px;margin-top:-8px}
-.section-title{font-weight:600;font-size:18px;margin-top:12px}
-.small-muted{color:#6b7280;font-size:13px}
-</style>
+    <style>
+    body {
+        background: linear-gradient(120deg, #f0f4ff 0%, #f9fbff 100%);
+    }
+    .main-title {
+        font-size: 2.2em; font-weight: 700; color: #1e3a8a;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+        margin-bottom: -0.2em;
+    }
+    .section-title {
+        font-size: 1.3em; font-weight: 600; color: #1e40af;
+        margin-top: 1em; margin-bottom: 0.5em;
+        border-left: 5px solid #2563eb; padding-left: 10px;
+    }
+    .divider {
+        height: 2px; margin: 1.5em 0; border: none;
+        background: linear-gradient(to right, #2563eb33, #60a5fa33);
+    }
+    .employee-summary {
+        background: #ffffffcc; border-radius: 12px;
+        padding: 1em 1.5em; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
-col1, col2 = st.columns([2,3])
+# --- Top Banner ---
+col1, col2 = st.columns([2, 3])
 with col1:
-    st.image("https://cdn-icons-png.flaticon.com/512/942/942748.png", width=120)
+    st.image("https://cdn-icons-png.flaticon.com/512/1055/1055646.png", width=100)
+    st.markdown('<h1 class="main-title">Employee Self Appraisal 2025</h1>', unsafe_allow_html=True)
 with col2:
-    st.markdown('<div class="brand">Smart Self-Appraisal+</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Enhanced UI & auto-organized by department</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown("#### Employee Information")
+        with st.form("employee_info_form", clear_on_submit=False):
+            name = st.text_input("Full Name")
+            emp_id = st.text_input("Employee ID")
+            department = st.selectbox("Department", ["Research", "Engineering", "Marketing", "Operations"])
+            year = st.number_input("Appraisal Year", value=2025, step=1)
+            submitted_info = st.form_submit_button("Confirm Info")
 
-st.write('---')
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-# --- Session state management for dynamic inputs ---
-if 'course_count' not in st.session_state:
-    st.session_state.course_count = 3
-if 'award_count' not in st.session_state:
-    st.session_state.award_count = 3
+# --- Compact employee summary display (from 2nd image) ---
+if submitted_info:
+    st.markdown(
+        f"""
+        <div class="employee-summary">
+        <strong>Name:</strong> {name} &nbsp; | &nbsp;
+        <strong>ID:</strong> {emp_id} &nbsp; | &nbsp;
+        <strong>Department:</strong> {department} &nbsp; | &nbsp;
+        <strong>Year:</strong> {int(year)}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# --- Dynamic control buttons ABOVE the form ---
-st.subheader("🧩 Add More Sections Before Filling")
-cc1, cc2 = st.columns(2)
-with cc1:
-    if st.button("➕ Add another course field"):
-        st.session_state.course_count += 1
-with cc2:
-    if st.button("🏅 Add another award field"):
-        st.session_state.award_count += 1
+st.markdown('<hr class="divider">', unsafe_allow_html=True)
 
-st.caption("You can click the buttons above to show more input fields before submitting your form.")
-st.write('---')
+# === Main Self Appraisal Form ===
+with st.form("appraisal_form", clear_on_submit=False):
+    st.markdown('<h3 class="section-title">Achievements</h3>', unsafe_allow_html=True)
+    achievements = st.text_area("Describe your key achievements this year")
 
+    st.markdown('<h3 class="section-title">Skills & Courses</h3>', unsafe_allow_html=True)
+    num_courses = st.session_state.get("course_count", 3)
+    for i in range(num_courses):
+        c1, c2 = st.columns([4, 2])
+        c1.text_input(f"Course #{i+1}", key=f"course_{i}")
+        c2.text_input(f"Hours or Certification #{i+1}", key=f"hours_{i}")
 
-# --- Appraisal Form ---
-with st.form('appraisal_form'):
-    name = st.text_input('👤 Full Name')
-    email = st.text_input('📧 Work Email')
-    dept = st.text_input('🏢 Department')
-    role = st.text_input('💼 Role / Designation')
+    st.markdown('<h3 class="section-title">Awards & Recognitions</h3>', unsafe_allow_html=True)
+    num_awards = st.session_state.get("award_count", 3)
+    for i in range(num_awards):
+        a1, a2 = st.columns([4, 2])
+        a1.text_input(f"Award #{i+1}", key=f"award_{i}")
+        a2.date_input(f"Date Received #{i+1}", key=f"award_date_{i}")
 
-    st.markdown('<div class="section-title">📘 Courses / Training</div>', unsafe_allow_html=True)
-    courses = []
-    for i in range(st.session_state.course_count):
-        cols = st.columns([4, 2])
-        title = cols[0].text_input(f'Course title #{i+1}', key=f'course_title_{i}')
-        hours = cols[1].number_input(f'Hours #{i+1}', min_value=0, step=1, key=f'course_hours_{i}')
-        if title:
-            courses.append({'title': title, 'hours': hours, 'points_per_course': 2})
+    st.markdown('<h3 class="section-title">Goals for Next Year</h3>', unsafe_allow_html=True)
+    next_goals = st.text_area("List your goals or improvement plans for next year")
 
-    st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
-    awards = []
-    for i in range(st.session_state.award_count):
-        cols = st.columns([3, 2])
-        title = cols[0].text_input(f'Award #{i+1}', key=f'award_title_{i}')
-        year = cols[1].text_input(f'Year #{i+1}', key=f'award_year_{i}')
-        if title:
-            awards.append({'title': title, 'year': year})
+    st.markdown('<h3 class="section-title">Self-Rating</h3>', unsafe_allow_html=True)
+    rating = st.slider("Rate your performance (1 = Poor, 10 = Excellent)", 1, 10, 7)
 
-    st.markdown('<div class="section-title">📚 Research & Teaching</div>', unsafe_allow_html=True)
-    papers = st.number_input('📰 Papers published', min_value=0, step=1)
-    paper_titles = st.text_area('Paper titles (comma separated)')
-    patents = st.number_input('🧠 Patents granted', min_value=0, step=1)
-    patent_details = st.text_area('Patent IDs / details')
-    corp_trainings = st.number_input('🏫 Corporate trainings conducted', min_value=0, step=1)
-    corp_details = st.text_area('Company names / topics (one per line)')
-    projects = st.number_input('💡 Consultancy / Projects completed', min_value=0, step=1)
-    proj_details = st.text_area('Project details (one per line)')
+    # === Review Summary Panel ===
+    with st.expander("🔍 Review Your Entries Before Submitting"):
+        st.write("**Achievements:**", achievements)
+        st.write("**Courses:**", [st.session_state[f"course_{i}"] for i in range(num_courses)])
+        st.write("**Awards:**", [st.session_state[f"award_{i}"] for i in range(num_awards)])
+        st.write("**Goals:**", next_goals)
+        st.write("**Rating:**", rating)
 
-    teaching = st.text_area('📘 Teaching summary')
-    research = st.text_area('🔬 Research summary')
-    rating = st.slider('⭐ Overall self-rating', 1, 5, 4)
-    comments = st.text_area('💬 Additional Comments')
+    submit = st.form_submit_button("✅ Submit Appraisal")
 
-    submitted = st.form_submit_button('🚀 Submit Appraisal')
-
-# --- Submission Handling ---
-if submitted:
-    submission = {
-        'id': str(uuid.uuid4())[:8],
-        'timestamp': datetime.datetime.utcnow().isoformat(),
-        'employee_name': name,
-        'employee_email': email,
-        'department': dept,
-        'role': role,
-        'contributions': {
-            'courses': courses,
-            'papers': {'count': papers, 'titles': [p.strip() for p in paper_titles.split(',') if p.strip()]},
-            'patents': {'count': patents, 'details': patent_details},
-            'corporate_trainings': {'count': corp_trainings, 'details': corp_details},
-            'projects': {'count': projects, 'details': [p.strip() for p in proj_details.split('\n') if p.strip()]},
-            'awards': awards
-        },
-        'teaching': teaching,
-        'research': research,
-        'self_rating_overall': rating,
-        'comments': comments
-    }
-
-    # always save local separate JSON
-    local_path = local_save(submission)
-    st.success(f'Local JSON saved: {local_path}')
-
-    # try append to google sheets
-    try:
-        if GS_AVAILABLE and 'gcp_service_account' in st.secrets and 'GOOGLE_SHEET_ID' in st.secrets:
-            append_to_gsheet(submission)
-            st.info('Appended to Google Sheet')
-        else:
-            st.warning('Google Sheets not configured; saved locally only')
-    except Exception as e:
-        st.warning(f'Could not append to Google Sheets: {e}')
-
-    # optionally upload JSON to Drive if folder id provided
-    try:
-        drive_folder = st.secrets.get('GOOGLE_DRIVE_FOLDER_ID')
-        service_account_info = st.secrets.get('gcp_service_account')
-        if drive_folder and service_account_info:
-            try:
-                file_id = upload_json_to_drive(local_path, Path(local_path).name, drive_folder, service_account_info)
-                st.info(f'Uploaded JSON to Drive (file id: {file_id})')
-            except Exception as e:
-                st.warning(f'Drive upload failed: {e}')
-    except Exception:
-        pass
-
-    st.balloons()
-    st.json(submission)
-    st.download_button('📥 Download submission (JSON)', data=json.dumps(submission, indent=2), file_name=f'appraisal_{submission["id"]}.json')
-
-# --- Admin / Combine view ---
-st.write('---')
-if st.checkbox('📊 Show integrated local submission DataFrame'):
-    df = load_all_submissions()
-    if df.empty:
-        st.info('No local submissions found')
-    else:
-        st.dataframe(df)
-        st.download_button('⬇️ Download all (CSV)', df.to_csv(index=False), 'all_submissions.csv')
-
-st.markdown('**requirements.txt**')
-st.code('''
-streamlit
-gspread
-google-auth
-pandas
-requests
-google-api-python-client
-''', language='bash')
+# === Add buttons below sections ===
+st.markdown("### Add More Entries")
+c1, c2 = st.columns(2)
+if c1.button("➕ Add Another Course"):
+    st.session_state.course_count = st.session_state.get("course_count", 3) + 1
+if c2.button("🏆 Add Another Award"):
+    st.session_state.award_count = st.session_state.get("award_count", 3) + 1
