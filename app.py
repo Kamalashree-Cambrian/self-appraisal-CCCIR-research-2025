@@ -92,42 +92,56 @@ with col2:
 
 st.write('---')
 
-# --- Fixed form (simplified dynamic fields) ---
+# --- Session state management for dynamic inputs ---
+if 'course_count' not in st.session_state:
+    st.session_state.course_count = 3
+if 'award_count' not in st.session_state:
+    st.session_state.award_count = 3
+
+# --- Dynamic add buttons (outside the form) ---
+st.subheader("➕ Add More Sections")
+c1, c2 = st.columns(2)
+with c1:
+    if st.button("➕ Add another course"):
+        st.session_state.course_count += 1
+        st.experimental_rerun()
+with c2:
+    if st.button("🏅 Add another award"):
+        st.session_state.award_count += 1
+        st.experimental_rerun()
+
+# --- Main Form ---
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
     email = st.text_input('📧 Work Email')
     dept = st.text_input('🏢 Department')
     role = st.text_input('💼 Role / Designation')
 
-    st.markdown('<div class="section-title">📘 Contributions</div>', unsafe_allow_html=True)
-    st.caption("Enter up to 3 courses (leave blank if not applicable)")
+    st.markdown('<div class="section-title">📘 Courses / Training</div>', unsafe_allow_html=True)
     courses = []
-    for i in range(1, 4):
+    for i in range(st.session_state.course_count):
         cols = st.columns([4, 2])
-        title = cols[0].text_input(f'Course title #{i}', key=f'course_title_{i}')
-        hours = cols[1].number_input(f'Hours #{i}', min_value=0, step=1, key=f'course_hours_{i}')
+        title = cols[0].text_input(f'Course title #{i+1}', key=f'course_title_{i}')
+        hours = cols[1].number_input(f'Hours #{i+1}', min_value=0, step=1, key=f'course_hours_{i}')
         if title:
             courses.append({'title': title, 'hours': hours, 'points_per_course': 2})
 
+    st.markdown('<div class="section-title">📚 Research & Teaching</div>', unsafe_allow_html=True)
     papers = st.number_input('📰 Papers published', min_value=0, step=1)
     paper_titles = st.text_area('Paper titles (comma separated)')
-
     patents = st.number_input('🧠 Patents granted', min_value=0, step=1)
     patent_details = st.text_area('Patent IDs / details')
-
     corp_trainings = st.number_input('🏫 Corporate trainings conducted', min_value=0, step=1)
     corp_details = st.text_area('Company names / topics (one per line)')
-
     projects = st.number_input('💡 Consultancy / Projects completed', min_value=0, step=1)
     proj_details = st.text_area('Project details (one per line)')
 
     st.markdown('<div class="section-title">🏅 Awards & Certificates</div>', unsafe_allow_html=True)
-    st.caption("Enter up to 3 awards or certificates")
     awards = []
-    for i in range(1, 4):
+    for i in range(st.session_state.award_count):
         cols = st.columns([3, 2])
-        title = cols[0].text_input(f'Award #{i}', key=f'award_title_{i}')
-        year = cols[1].text_input(f'Year #{i}', key=f'award_year_{i}')
+        title = cols[0].text_input(f'Award #{i+1}', key=f'award_title_{i}')
+        year = cols[1].text_input(f'Year #{i+1}', key=f'award_year_{i}')
         if title:
             awards.append({'title': title, 'year': year})
 
