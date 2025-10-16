@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import json
@@ -13,13 +12,41 @@ try:
 except Exception:
     GS_AVAILABLE = False
 
-# -------------------- Helper functions --------------------
+# Optional Drive upload libs will be imported inside function when needed.
+
+# --- Helper functions ---
+
 def local_save(submission: dict, folder='submissions'):
     Path(folder).mkdir(parents=True, exist_ok=True)
     filename = Path(folder) / f"submission_{submission['id']}.json"
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(submission, f, ensure_ascii=False, indent=2, default=str)
     return str(filename)
+
+
+def upload_json_to_drive(local_path: str, filename: str, folder_id: str, service_account_info: dict):
+    """Upload a local file to Google Drive folder_id using service account credentials.
+    This function imports googleapiclient lazily and returns the created file id on success.
+    If the libraries are missing, it raises an informative exception."""
+    try:
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+        from google.oauth2.service_account import Credentials as GACreds
+    except Exception as e:
+        raise RuntimeError('google-api-python-client not installed; add it to requirements.txt') from e
+
+    scopes = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
+    creds = GACreds.from_service_account_info(service_account_info, scopes=scopes)
+    drive_service = build('drive', 'v3', credentials=creds)
+
+    file_metadata = {'name': filename}
+    if folder_id:
+        file_metadata['parents'] = [folder_id]
+
+    media = MediaFileUpload(local_path, mimetype='application/json')
+    created = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    return created.get('id')
+
 
 def flatten_submission(sub: dict) -> dict:
     flat = {}
@@ -31,8 +58,10 @@ def flatten_submission(sub: dict) -> dict:
     flat['role'] = sub.get('role')
     flat['self_rating_overall'] = sub.get('self_rating_overall')
     flat['comments'] = sub.get('comments')
+    # store contributions as JSON string for easy sheet storage
     flat['contributions'] = json.dumps(sub.get('contributions', {}), ensure_ascii=False)
     return flat
+
 
 def append_to_gsheet(submission: dict):
     if not GS_AVAILABLE:
@@ -61,41 +90,69 @@ def append_to_gsheet(submission: dict):
         ws = sh.add_worksheet(title=worksheet_name, rows=1000, cols=30)
 
     flat = flatten_submission(submission)
+    # ensure header
     if not ws.get_all_values():
         ws.append_row(list(flat.keys()))
     ws.append_row(list(flat.values()))
     return True
 
 
-# -------------------- UI Setup --------------------
+# --- Combine local JSON submissions into a single dataframe ---
+def load_all_submissions(folder='submissions'):
+    p = Path(folder)
+    if not p.exists():
+        return pd.DataFrame()
+    files = sorted(p.glob('submission_*.json'))
+    if not files:
+        return pd.DataFrame()
+    records = []
+    for f in files:
+        try:
+            with open(f, 'r', encoding='utf-8') as fh:
+                data = json.load(fh)
+                flat = flatten_submission(data)
+                records.append(flat)
+        except Exception:
+            continue
+    if not records:
+        return pd.DataFrame()
+    df = pd.DataFrame(records)
+    # convert timestamp to datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    return df
+
+
+# --- Page setup ---
 st.set_page_config(page_title='Self Appraisal — SmartForm+', layout='wide', page_icon='📝')
 
 st.markdown("""
 <style>
+.card {background:linear-gradient(90deg,#ffffffcc,#f1f7ff);padding:18px;border-radius:16px;box-shadow:0 6px 18px rgba(22,61,105,0.1);}
 .brand{font-size:30px;font-weight:700;color:#124265}
 .subtitle{color:#475569;font-size:15px;margin-top:-8px}
-.section-title{font-weight:600;font-size:18px;margin-top:20px}
+.section-title{font-weight:600;font-size:18px;margin-top:12px}
+.small-muted{color:#6b7280;font-size:13px}
 </style>
 """, unsafe_allow_html=True)
 
-col1, col2 = st.columns([2, 3])
+# --- Header ---
+col1, col2 = st.columns([2,3])
 with col1:
     st.image("https://cdn-icons-png.flaticon.com/512/942/942748.png", width=120)
 with col2:
     st.markdown('<div class="brand">Smart Self-Appraisal+</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Enhanced UI • Auto-organized by department</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Enhanced UI & auto-organized by department</div>', unsafe_allow_html=True)
+
 st.write('---')
 
-
-# -------------------- Session state --------------------
+# --- Session state management for dynamic inputs ---
 if 'course_count' not in st.session_state:
     st.session_state.course_count = 3
 if 'award_count' not in st.session_state:
     st.session_state.award_count = 3
 
-# -------------------- Dynamic control buttons ABOVE the form --------------------
+# --- Dynamic control buttons ABOVE the form ---
 st.subheader("🧩 Add More Sections Before Filling")
-
 cc1, cc2 = st.columns(2)
 with cc1:
     if st.button("➕ Add another course field"):
@@ -108,7 +165,7 @@ st.caption("You can click the buttons above to show more input fields before sub
 st.write('---')
 
 
-# -------------------- Appraisal Form --------------------
+# --- Appraisal Form ---
 with st.form('appraisal_form'):
     name = st.text_input('👤 Full Name')
     email = st.text_input('📧 Work Email')
@@ -150,7 +207,7 @@ with st.form('appraisal_form'):
 
     submitted = st.form_submit_button('🚀 Submit Appraisal')
 
-# -------------------- Submission Handling --------------------
+# --- Submission Handling ---
 if submitted:
     submission = {
         'id': str(uuid.uuid4())[:8],
@@ -173,27 +230,53 @@ if submitted:
         'comments': comments
     }
 
+    # always save local separate JSON
+    local_path = local_save(submission)
+    st.success(f'Local JSON saved: {local_path}')
+
+    # try append to google sheets
     try:
         if GS_AVAILABLE and 'gcp_service_account' in st.secrets and 'GOOGLE_SHEET_ID' in st.secrets:
             append_to_gsheet(submission)
-            st.success('✅ Saved to Google Sheets (auto-organized by department/year)')
+            st.info('Appended to Google Sheet')
         else:
-            raise RuntimeError('Google Sheets credentials missing')
+            st.warning('Google Sheets not configured; saved locally only')
     except Exception as e:
-        path = local_save(submission)
-        st.warning(f'⚠️ Could not save to Google Sheets. Saved locally at {path}')
+        st.warning(f'Could not append to Google Sheets: {e}')
+
+    # optionally upload JSON to Drive if folder id provided
+    try:
+        drive_folder = st.secrets.get('GOOGLE_DRIVE_FOLDER_ID')
+        service_account_info = st.secrets.get('gcp_service_account')
+        if drive_folder and service_account_info:
+            try:
+                file_id = upload_json_to_drive(local_path, Path(local_path).name, drive_folder, service_account_info)
+                st.info(f'Uploaded JSON to Drive (file id: {file_id})')
+            except Exception as e:
+                st.warning(f'Drive upload failed: {e}')
+    except Exception:
+        pass
 
     st.balloons()
     st.json(submission)
-    st.download_button('📥 Download submission (JSON)',
-                       data=json.dumps(submission, indent=2),
-                       file_name=f'appraisal_{submission["id"]}.json')
+    st.download_button('📥 Download submission (JSON)', data=json.dumps(submission, indent=2), file_name=f'appraisal_{submission["id"]}.json')
 
+# --- Admin / Combine view ---
 st.write('---')
+if st.checkbox('📊 Show integrated local submission DataFrame'):
+    df = load_all_submissions()
+    if df.empty:
+        st.info('No local submissions found')
+    else:
+        st.dataframe(df)
+        st.download_button('⬇️ Download all (CSV)', df.to_csv(index=False), 'all_submissions.csv')
+
 st.markdown('**requirements.txt**')
-st.code('''streamlit
+st.code('''
+streamlit
 gspread
 google-auth
 pandas
 requests
+google-api-python-client
 ''', language='bash')
