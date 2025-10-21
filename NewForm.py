@@ -38,26 +38,19 @@ st.markdown("""
 # PAGE TITLE
 # ---------------------------------------
 st.title("🎓 Faculty Performance Submission Form")
-st.write("Please fill in all relevant sections below. You can add multiple entries where applicable.")
+st.write("Please fill in all relevant sections below. You can skip any part that does not apply to you.")
 
 # ---------------------------------------
 # SESSION STATE SETUP
 # ---------------------------------------
-if "courses" not in st.session_state:
-    st.session_state.courses = [{}]
-if "patents" not in st.session_state:
-    st.session_state.patents = [{}]
-if "papers" not in st.session_state:
-    st.session_state.papers = [{}]
-if "projects" not in st.session_state:
-    st.session_state.projects = [{}]
-if "certificates" not in st.session_state:
-    st.session_state.certificates = [{}]
+for key in ["courses", "patents", "papers", "projects", "certificates"]:
+    if key not in st.session_state:
+        st.session_state[key] = []
 
 # ---------------------------------------
-# ADD BUTTONS (OUTSIDE FORM)
+# ADD BUTTONS
 # ---------------------------------------
-st.write("### ➕ Add More Entries")
+st.write("### ➕ Add More Entries (Optional)")
 colA, colB, colC, colD, colE = st.columns(5)
 with colA:
     if st.button("Add Course"):
@@ -83,11 +76,13 @@ st.write("---")
 with st.form("faculty_form", clear_on_submit=False):
 
     st.subheader("👤 Basic Information")
-    name = st.text_input("Full Name")
-    designation = st.text_input("Designation")
+    name = st.text_input("Full Name *")
+    designation = st.text_input("Designation *")
 
-    # --- Courses ---
-    st.subheader("📘 Courses Conducted")
+    # --- COURSES ---
+    st.subheader("📘 Courses Conducted (Optional)")
+    if not st.session_state.courses:
+        st.info("No courses added. Click 'Add Course' above if applicable.")
     for i, course in enumerate(st.session_state.courses):
         st.write(f"**Course {i+1}**")
         col1, col2, col3 = st.columns(3)
@@ -96,44 +91,68 @@ with st.form("faculty_form", clear_on_submit=False):
         with col2:
             st.session_state.courses[i]["Hours"] = st.number_input(f"Hours {i+1}", min_value=0, key=f"course_hours_{i}")
         with col3:
-            st.session_state.courses[i]["Type"] = st.selectbox(f"Type {i+1}", ["Internal", "External", "Corporate"], key=f"course_type_{i}")
+            st.session_state.courses[i]["Type"] = st.selectbox(
+                f"Type {i+1}", ["None", "Internal", "External", "Corporate"], key=f"course_type_{i}"
+            )
 
-    # --- Patents ---
-    st.subheader("🔬 Patents")
+    # --- PATENTS ---
+    st.subheader("🔬 Patents (Optional)")
+    if not st.session_state.patents:
+        st.info("No patents added. Click 'Add Patent' above if applicable.")
     for i, patent in enumerate(st.session_state.patents):
         st.write(f"**Patent {i+1}**")
         col1, col2 = st.columns(2)
         with col1:
-            st.session_state.patents[i]["Status"] = st.selectbox(f"Patent Status {i+1}", ["Filed", "Granted"], key=f"patent_status_{i}")
+            st.session_state.patents[i]["Status"] = st.selectbox(
+                f"Patent Status {i+1}", ["None", "Filed", "Granted"], key=f"patent_status_{i}"
+            )
         with col2:
-            st.session_state.patents[i]["People"] = st.number_input(f"People Filed With {i+1}", min_value=1, key=f"patent_people_{i}")
+            st.session_state.patents[i]["People"] = st.number_input(
+                f"People Filed With {i+1}", min_value=0, key=f"patent_people_{i}"
+            )
 
-    # --- Papers ---
-    st.subheader("📝 Papers (Published, In Progress, Submitted)")
+    # --- PAPERS ---
+    st.subheader("📝 Papers (Optional)")
+    if not st.session_state.papers:
+        st.info("No papers added. Click 'Add Paper' above if applicable.")
     for i, paper in enumerate(st.session_state.papers):
         st.write(f"**Paper {i+1}**")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.session_state.papers[i]["Status"] = st.selectbox(f"Status {i+1}", ["Published", "In Progress", "Submitted"], key=f"paper_status_{i}")
+            st.session_state.papers[i]["Status"] = st.selectbox(
+                f"Status {i+1}", ["None", "Published", "In Progress", "Submitted"], key=f"paper_status_{i}"
+            )
         with col2:
-            st.session_state.papers[i]["Worked_With"] = st.radio(f"Worked Alone or With Others? {i+1}", ["Alone", "With Others"], key=f"paper_with_{i}")
+            st.session_state.papers[i]["Worked_With"] = st.radio(
+                f"Worked Alone or With Others? {i+1}", ["None", "Alone", "With Others"], key=f"paper_with_{i}"
+            )
         with col3:
-            st.session_state.papers[i]["Count"] = st.number_input(f"Number of Papers {i+1}", min_value=1, key=f"paper_count_{i}")
+            st.session_state.papers[i]["Count"] = st.number_input(
+                f"Number of Papers {i+1}", min_value=0, key=f"paper_count_{i}"
+            )
 
-    # --- Projects ---
-    st.subheader("💼 Consultancy Projects")
+    # --- PROJECTS ---
+    st.subheader("💼 Consultancy Projects (Optional)")
+    if not st.session_state.projects:
+        st.info("No projects added. Click 'Add Project' above if applicable.")
     for i, proj in enumerate(st.session_state.projects):
         st.write(f"**Project {i+1}**")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.session_state.projects[i]["Title"] = st.text_input(f"Project Title {i+1}", key=f"proj_title_{i}")
         with col2:
-            st.session_state.projects[i]["Status"] = st.selectbox(f"Status {i+1}", ["Ongoing", "Complete"], key=f"proj_status_{i}")
+            st.session_state.projects[i]["Status"] = st.selectbox(
+                f"Status {i+1}", ["None", "Ongoing", "Complete"], key=f"proj_status_{i}"
+            )
         with col3:
-            st.session_state.projects[i]["Worked_With"] = st.radio(f"Worked Alone or With Others? {i+1}", ["Alone", "With Others"], key=f"proj_with_{i}")
+            st.session_state.projects[i]["Worked_With"] = st.radio(
+                f"Worked Alone or With Others? {i+1}", ["None", "Alone", "With Others"], key=f"proj_with_{i}"
+            )
 
-    # --- Certificates ---
-    st.subheader("🏆 Awards and Certificates")
+    # --- CERTIFICATES ---
+    st.subheader("🏆 Awards and Certificates (Optional)")
+    if not st.session_state.certificates:
+        st.info("No awards/certificates added. Click 'Add Certificate' above if applicable.")
     for i, cert in enumerate(st.session_state.certificates):
         st.write(f"**Certificate {i+1}**")
         col1, col2 = st.columns(2)
@@ -148,66 +167,69 @@ with st.form("faculty_form", clear_on_submit=False):
 # SUBMIT HANDLER
 # ---------------------------------------
 if submitted:
-    total_score = 0
-    for c in st.session_state.courses:
-        if c.get("Type") == "Internal":
-            total_score += 2
-        elif c.get("Type") in ["External", "Corporate"]:
-            total_score += 4
-    for p in st.session_state.patents:
-        total_score += 4 if p.get("People") == 1 else 2
-    for p in st.session_state.papers:
-        total_score += 4 if p.get("Worked_With") == "Alone" else 2
-    for p in st.session_state.projects:
-        total_score += 4 if p.get("Worked_With") == "Alone" else 2
-    for a in st.session_state.certificates:
-        total_score += 2 if a.get("Title") else 0
+    if not name or not designation:
+        st.error("⚠️ Please fill in the *required* fields (Name and Designation).")
+    else:
+        total_score = 0
+        for c in st.session_state.courses:
+            if c.get("Type") == "Internal":
+                total_score += 2
+            elif c.get("Type") in ["External", "Corporate"]:
+                total_score += 4
+        for p in st.session_state.patents:
+            if p.get("Status") != "None":
+                total_score += 4 if p.get("People") == 1 else 2
+        for p in st.session_state.papers:
+            if p.get("Status") != "None":
+                total_score += 4 if p.get("Worked_With") == "Alone" else 2
+        for p in st.session_state.projects:
+            if p.get("Status") != "None":
+                total_score += 4 if p.get("Worked_With") == "Alone" else 2
+        for a in st.session_state.certificates:
+            total_score += 2 if a.get("Title") else 0
 
-    st.success(f"✅ Thank you, **{name}**! Your total performance score is **{total_score} points.**")
+        st.success(f"✅ Thank you, **{name}**! Your total performance score is **{total_score} points.**")
 
-    # Save data
-    combined_data = {
-        "Name": [name],
-        "Designation": [designation],
-        "Courses": [st.session_state.courses],
-        "Patents": [st.session_state.patents],
-        "Papers": [st.session_state.papers],
-        "Projects": [st.session_state.projects],
-        "Certificates": [st.session_state.certificates],
-        "Total_Score": [total_score]
-    }
-    df = pd.DataFrame(combined_data)
+        combined_data = {
+            "Name": [name],
+            "Designation": [designation],
+            "Courses": [st.session_state.courses or None],
+            "Patents": [st.session_state.patents or None],
+            "Papers": [st.session_state.papers or None],
+            "Projects": [st.session_state.projects or None],
+            "Certificates": [st.session_state.certificates or None],
+            "Total_Score": [total_score],
+        }
+        df = pd.DataFrame(combined_data)
 
-    file_path = "faculty_responses.xlsx"
-    if os.path.exists(file_path):
-        existing_df = pd.read_excel(file_path)
-        df = pd.concat([existing_df, df], ignore_index=True)
-    df.to_excel(file_path, index=False)
+        file_path = "faculty_responses.xlsx"
+        if os.path.exists(file_path):
+            existing_df = pd.read_excel(file_path)
+            df = pd.concat([existing_df, df], ignore_index=True)
+        df.to_excel(file_path, index=False)
 
-    st.write("### 📄 Your Recorded Entry")
-    st.dataframe(df)
+        st.write("### 📄 Your Recorded Entry")
+        st.dataframe(df.tail(1))
 
-    # Chart
-    categories = ["Courses", "Patents", "Papers", "Projects", "Certificates"]
-    scores = [
-        len(st.session_state.courses),
-        len(st.session_state.patents),
-        len(st.session_state.papers),
-        len(st.session_state.projects),
-        len(st.session_state.certificates),
-    ]
-    fig, ax = plt.subplots()
-    ax.barh(categories, scores)
-    ax.set_xlabel("Count")
-    ax.set_title("Entries by Category")
-    st.pyplot(fig)
+        categories = ["Courses", "Patents", "Papers", "Projects", "Certificates"]
+        scores = [
+            len(st.session_state.courses),
+            len(st.session_state.patents),
+            len(st.session_state.papers),
+            len(st.session_state.projects),
+            len(st.session_state.certificates),
+        ]
+        fig, ax = plt.subplots()
+        ax.barh(categories, scores)
+        ax.set_xlabel("Count")
+        ax.set_title("Entries by Category")
+        st.pyplot(fig)
 
-    # Download
-    buffer = BytesIO()
-    df.to_excel(buffer, index=False)
-    st.download_button(
-        label="📥 Download Your Record (Excel)",
-        data=buffer.getvalue(),
-        file_name=f"{name}_faculty_performance.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        buffer = BytesIO()
+        df.to_excel(buffer, index=False)
+        st.download_button(
+            label="📥 Download Your Record (Excel)",
+            data=buffer.getvalue(),
+            file_name=f"{name}_faculty_performance.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
