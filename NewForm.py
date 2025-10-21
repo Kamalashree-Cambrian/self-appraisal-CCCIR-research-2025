@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import os
 from io import BytesIO
 
+try:
+    import streamlit
+    import pandas
+    import matplotlib
+    import openpyxl
+except ImportError:
+    import os
+    os.system('pip install -r requirements.txt')
 # -------------------------------
 # App configuration
 # -------------------------------
