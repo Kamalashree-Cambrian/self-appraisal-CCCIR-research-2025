@@ -1,19 +1,15 @@
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
+import pandas as pd
 from datetime import datetime
+import os
 
 st.set_page_config(page_title="Employee Self Appraisal", page_icon="📝", layout="centered")
 
 st.title("📝 Employee Self Appraisal Form")
 
-# --- Google Sheet setup ---
-SCOPE = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-CREDS = Credentials.from_service_account_file("credentials.json", scopes=SCOPE)
-client = gspread.authorize(CREDS)
-SHEET = client.open("Self Appraisal Data").sheet1  # change sheet name if needed
+# File to save local data
+file_path = "self_appraisal_data.csv"
 
-# --- Form starts here ---
 with st.form("faculty_form", clear_on_submit=False):
     st.subheader("👤 Basic Information")
     name = st.text_input("Full Name *")
@@ -30,7 +26,7 @@ with st.form("faculty_form", clear_on_submit=False):
     st.divider()
 
     st.subheader("🏆 Achievements (Optional)")
-    awards = st.text_area("List any awards or recognitions (if none, leave blank)", placeholder="Optional")
+    awards = st.text_area("List any awards or recognitions", placeholder="Optional")
     contributions = st.text_area("Describe contributions to research/consultancy projects", placeholder="Optional")
 
     st.divider()
@@ -40,38 +36,30 @@ with st.form("faculty_form", clear_on_submit=False):
 
     submitted = st.form_submit_button("Submit")
 
-# --- Form submission handling ---
 if submitted:
     if not name or not department or not designation:
         st.error("⚠️ Please fill in all *required* fields (Name, Department, Designation).")
     else:
-        # Handle optional fields by converting empty ones to 0 or 'None'
-        data = [
-            name,
-            department,
-            designation,
-            patents if patents else 0,
-            papers if papers else 0,
-            courses if courses else 0,
-            awards if awards else "None",
-            contributions if contributions else "None",
-            next_goals if next_goals else "None",
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        ]
+        data = {
+            "Name": name,
+            "Department": department,
+            "Designation": designation,
+            "Patents": patents or 0,
+            "Papers": papers or 0,
+            "Courses": courses or 0,
+            "Awards": awards or "None",
+            "Contributions": contributions or "None",
+            "Next Year Goals": next_goals or "None",
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
 
-        SHEET.append_row(data)
+        df = pd.DataFrame([data])
+
+        # Save locally
+        if os.path.exists(file_path):
+            df_existing = pd.read_csv(file_path)
+            df = pd.concat([df_existing, df], ignore_index=True)
+        df.to_csv(file_path, index=False)
+
         st.success("✅ Your self-appraisal has been successfully submitted!")
-
-        # Optional: show summary
-        with st.expander("📋 Submitted Data Preview"):
-            st.write({
-                "Name": name,
-                "Department": department,
-                "Designation": designation,
-                "Patents": patents,
-                "Papers": papers,
-                "Courses": courses,
-                "Awards": awards or "None",
-                "Contributions": contributions or "None",
-                "Next Year Goals": next_goals or "None",
-            })
+        st.dataframe(df.tail(1))
