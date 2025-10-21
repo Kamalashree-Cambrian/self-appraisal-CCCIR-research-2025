@@ -4,24 +4,17 @@ import matplotlib.pyplot as plt
 import os
 from io import BytesIO
 
-try:
-    import streamlit
-    import pandas
-    import matplotlib
-    import openpyxl
-except ImportError:
-    import os
-    os.system('pip install -r requirements.txt')
-# -------------------------------
-# App configuration
-# -------------------------------
-st.set_page_config(page_title="Faculty Performance Form", page_icon="🎓", layout="centered")
+st.set_page_config(page_title="Faculty Performance Form", page_icon="🎓", layout="wide")
 
+# -----------------------------------
+# Custom CSS
+# -----------------------------------
 st.markdown("""
     <style>
         .main {
             background-color: #f8f9fc;
             font-family: 'Helvetica Neue', sans-serif;
+            padding: 1rem 3rem;
         }
         h1, h2, h3 {
             color: #4a4a8a;
@@ -39,12 +32,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎓 Faculty Performance Submission Form")
-st.write("Please fill in all relevant sections below. A final score and graph will be shown after submission.")
+st.write("Please fill in all relevant sections below. You can add multiple entries where applicable.")
 
-# -------------------------------
-# FORM START
-# -------------------------------
-with st.form("faculty_form", clear_on_submit=True):
+# -----------------------------------
+# Session state setup
+# -----------------------------------
+if "courses" not in st.session_state:
+    st.session_state.courses = [{}]
+if "patents" not in st.session_state:
+    st.session_state.patents = [{}]
+if "papers" not in st.session_state:
+    st.session_state.papers = [{}]
+if "certificates" not in st.session_state:
+    st.session_state.certificates = [{}]
+if "projects" not in st.session_state:
+    st.session_state.projects = [{}]
+
+# -----------------------------------
+# FORM
+# -----------------------------------
+with st.form("faculty_form", clear_on_submit=False):
 
     st.subheader("👤 Basic Information")
     name = st.text_input("Full Name")
@@ -52,150 +59,135 @@ with st.form("faculty_form", clear_on_submit=True):
 
     # --- Courses Conducted ---
     st.subheader("📘 Courses Conducted")
-    course_title = st.text_input("Course Title")
-    course_hours = st.number_input("Number of Hours Taught", min_value=0)
-    course_type = st.selectbox("Type", ["Internal", "External", "Corporate"])
-    course_points = 2 if course_type == "Internal" else 4
+    for i, course in enumerate(st.session_state.courses):
+        st.write(f"**Course {i+1}**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.session_state.courses[i]["Title"] = st.text_input(f"Course Title {i+1}", key=f"course_title_{i}")
+        with col2:
+            st.session_state.courses[i]["Hours"] = st.number_input(f"Hours {i+1}", min_value=0, key=f"course_hours_{i}")
+        with col3:
+            st.session_state.courses[i]["Type"] = st.selectbox(f"Type {i+1}", ["Internal", "External", "Corporate"], key=f"course_type_{i}")
+
+    if st.button("➕ Add Another Course"):
+        st.session_state.courses.append({})
 
     # --- Patents ---
     st.subheader("🔬 Patents")
-    patent_status = st.selectbox("Status", ["Filed", "Granted"])
-    patent_people = st.number_input("Number of People Filed With", min_value=1)
-    patent_points = 4 if patent_people == 1 else 2
+    for i, patent in enumerate(st.session_state.patents):
+        st.write(f"**Patent {i+1}**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.patents[i]["Status"] = st.selectbox(f"Patent Status {i+1}", ["Filed", "Granted"], key=f"patent_status_{i}")
+        with col2:
+            st.session_state.patents[i]["People"] = st.number_input(f"People Filed With {i+1}", min_value=1, key=f"patent_people_{i}")
+
+    if st.button("➕ Add Another Patent"):
+        st.session_state.patents.append({})
 
     # --- Papers Published ---
-    st.subheader("📝 Papers Published")
-    papers_published = st.number_input("Number of Papers Published", min_value=0)
-    published_alone = st.radio("Worked alone or with others?", ["Alone", "With Others"])
-    published_points = 4 if published_alone == "Alone" else 2
+    st.subheader("📝 Papers Published / In Progress / Submitted")
+    for i, paper in enumerate(st.session_state.papers):
+        st.write(f"**Paper {i+1}**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.session_state.papers[i]["Status"] = st.selectbox(f"Status {i+1}", ["Published", "In Progress", "Submitted"], key=f"paper_status_{i}")
+        with col2:
+            st.session_state.papers[i]["Worked_With"] = st.radio(f"Worked Alone or With Others? {i+1}", ["Alone", "With Others"], key=f"paper_with_{i}")
+        with col3:
+            st.session_state.papers[i]["Count"] = st.number_input(f"Number of Papers {i+1}", min_value=1, key=f"paper_count_{i}")
 
-    # --- Papers in Progress ---
-    st.subheader("⏳ Papers in Progress")
-    papers_progress = st.number_input("Number of Papers in Progress", min_value=0)
-    progress_alone = st.radio("Worked alone or with others?", ["Alone", "With Others"], key="progress")
-    progress_points = 4 if progress_alone == "Alone" else 2
-
-    # --- Papers Submitted ---
-    st.subheader("📤 Papers Submitted")
-    papers_submitted = st.number_input("Number of Papers Submitted", min_value=0)
-    submitted_alone = st.radio("Worked alone or with others?", ["Alone", "With Others"], key="submitted")
-    submitted_points = 4 if submitted_alone == "Alone" else 2
+    if st.button("➕ Add Another Paper"):
+        st.session_state.papers.append({})
 
     # --- Consultancy Projects ---
     st.subheader("💼 Consultancy Projects")
-    project_title = st.text_input("Project Title")
-    project_status = st.selectbox("Project Status", ["Ongoing", "Complete"])
-    project_team = st.radio("Worked alone or with others?", ["Alone", "With Others"], key="consult")
-    project_points = 4 if project_team == "Alone" else 2
+    for i, proj in enumerate(st.session_state.projects):
+        st.write(f"**Project {i+1}**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.session_state.projects[i]["Title"] = st.text_input(f"Project Title {i+1}", key=f"proj_title_{i}")
+        with col2:
+            st.session_state.projects[i]["Status"] = st.selectbox(f"Status {i+1}", ["Ongoing", "Complete"], key=f"proj_status_{i}")
+        with col3:
+            st.session_state.projects[i]["Worked_With"] = st.radio(f"Worked Alone or With Others? {i+1}", ["Alone", "With Others"], key=f"proj_with_{i}")
+
+    if st.button("➕ Add Another Project"):
+        st.session_state.projects.append({})
 
     # --- Awards and Certificates ---
     st.subheader("🏆 Awards and Certificates")
-    award_title = st.text_input("Award/Certificate Title")
-    award_month = st.text_input("Month Collected (e.g. March 2025)")
-    award_points = 2 if award_title else 0
+    for i, cert in enumerate(st.session_state.certificates):
+        st.write(f"**Certificate {i+1}**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.certificates[i]["Title"] = st.text_input(f"Award Title {i+1}", key=f"award_title_{i}")
+        with col2:
+            st.session_state.certificates[i]["Month"] = st.text_input(f"Month (e.g. March 2025) {i+1}", key=f"award_month_{i}")
 
-    # --- UG Courses ---
-    st.subheader("🎓 UG Courses Taught")
-    ug_course = st.text_input("UG Course Title")
-    ug_hours = st.number_input("UG Hours Taught", min_value=0)
+    if st.button("➕ Add Another Certificate"):
+        st.session_state.certificates.append({})
 
-    # --- PG Courses ---
-    st.subheader("🎓 PG Courses Taught")
-    pg_course = st.text_input("PG Course Title")
-    pg_hours = st.number_input("PG Hours Taught", min_value=0)
-
-    # --- Submit ---
     submitted = st.form_submit_button("Submit ✨")
 
-# -------------------------------
-# ON SUBMIT
-# -------------------------------
+# -----------------------------------
+# SUBMIT HANDLER
+# -----------------------------------
 if submitted:
-    # --- Calculate Total Points ---
-    total_score = (
-        course_points
-        + patent_points
-        + published_points
-        + progress_points
-        + submitted_points
-        + project_points
-        + award_points
-    )
+    # Simple scoring logic
+    total_score = 0
+    for c in st.session_state.courses:
+        if c.get("Type") == "Internal": total_score += 2
+        elif c.get("Type") in ["External", "Corporate"]: total_score += 4
+    for p in st.session_state.patents:
+        total_score += 4 if p.get("People") == 1 else 2
+    for p in st.session_state.papers:
+        total_score += (4 if p.get("Worked_With") == "Alone" else 2)
+    for p in st.session_state.projects:
+        total_score += (4 if p.get("Worked_With") == "Alone" else 2)
+    for a in st.session_state.certificates:
+        total_score += 2 if a.get("Title") else 0
 
-    st.success(f"✅ Thank you, **{name}**! Your performance score is **{total_score} points.**")
+    st.success(f"✅ Thank you, **{name}**! Your total performance score is **{total_score} points.**")
 
-    # --- Prepare data for saving ---
-    data = {
+    # Convert all data into DataFrame
+    combined_data = {
         "Name": [name],
         "Designation": [designation],
-        "Course_Title": [course_title],
-        "Course_Hours": [course_hours],
-        "Course_Type": [course_type],
-        "Course_Points": [course_points],
-        "Patent_Status": [patent_status],
-        "Patent_People": [patent_people],
-        "Patent_Points": [patent_points],
-        "Papers_Published": [papers_published],
-        "Published_Points": [published_points],
-        "Papers_Progress": [papers_progress],
-        "Progress_Points": [progress_points],
-        "Papers_Submitted": [papers_submitted],
-        "Submitted_Points": [submitted_points],
-        "Consultancy_Title": [project_title],
-        "Consultancy_Status": [project_status],
-        "Consultancy_Points": [project_points],
-        "Award_Title": [award_title],
-        "Award_Month": [award_month],
-        "Award_Points": [award_points],
-        "UG_Course": [ug_course],
-        "UG_Hours": [ug_hours],
-        "PG_Course": [pg_course],
-        "PG_Hours": [pg_hours],
-        "Total_Score": [total_score],
+        "Courses": [st.session_state.courses],
+        "Patents": [st.session_state.patents],
+        "Papers": [st.session_state.papers],
+        "Projects": [st.session_state.projects],
+        "Certificates": [st.session_state.certificates],
+        "Total_Score": [total_score]
     }
+    df = pd.DataFrame(combined_data)
 
-    df = pd.DataFrame(data)
-
-    # --- Save to Excel ---
     file_path = "faculty_responses.xlsx"
     if os.path.exists(file_path):
         existing_df = pd.read_excel(file_path)
         df = pd.concat([existing_df, df], ignore_index=True)
-
     df.to_excel(file_path, index=False)
 
-    # --- Show DataFrame ---
     st.write("### 📄 Your Recorded Entry")
     st.dataframe(df)
 
-    # --- Graph of Points ---
-    st.write("### 📊 Your Performance Breakdown")
-    categories = [
-        "Courses",
-        "Patents",
-        "Published",
-        "Progress",
-        "Submitted",
-        "Projects",
-        "Awards",
-    ]
+    # Chart
+    categories = ["Courses", "Patents", "Papers", "Projects", "Certificates"]
     scores = [
-        course_points,
-        patent_points,
-        published_points,
-        progress_points,
-        submitted_points,
-        project_points,
-        award_points,
+        len(st.session_state.courses),
+        len(st.session_state.patents),
+        len(st.session_state.papers),
+        len(st.session_state.projects),
+        len(st.session_state.certificates),
     ]
-
     fig, ax = plt.subplots()
     ax.barh(categories, scores)
-    ax.set_xlabel("Points")
-    ax.set_title("Performance Breakdown by Category")
+    ax.set_xlabel("Count")
+    ax.set_title("Entries by Category")
     st.pyplot(fig)
 
-    # --- Download Option ---
+    # Download
     buffer = BytesIO()
     df.to_excel(buffer, index=False)
     st.download_button(
