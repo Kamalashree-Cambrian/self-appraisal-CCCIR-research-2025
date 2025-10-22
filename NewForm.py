@@ -539,9 +539,18 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
+# creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
+# client = gspread.authorize(creds)
+# sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+
+
+creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+scope = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
-sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
 # ---------------- FORM ----------------
 with st.form("faculty_form", clear_on_submit=False):
